@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 )
 
@@ -10,5 +11,8 @@ var (
 
 func StartApplication() {
 	mapUrls()
-	router.Run(":8000")
+	err := router.Run(":8000")
+	if err != nil {
+		fmt.Println("Server Error:", err)
+	}
 }

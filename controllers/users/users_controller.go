@@ -6,25 +6,27 @@ import (
 	"github.com/mmkader85/bookstore_users-api/services"
 	"github.com/mmkader85/bookstore_users-api/utils/errors"
 	"net/http"
+	"strconv"
 )
 
 func CreateUser(ctx *gin.Context) {
-	var user users.Users
-	//body, err := ioutil.ReadAll(ctx.Request.Body)
-	//if err != nil {
-	//	fmt.Println(err)
-	//	return
-	//}
+	var user users.User
+	// body, err := ioutil.ReadAll(ctx.Request.Body)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 	//
-	//if err := json.Unmarshal(body, &user); err != nil {
-	//	fmt.Println("Error during unmarshall:", err)
-	//	return
-	//}
+	// if err := json.Unmarshal(body, &user); err != nil {
+	// 	fmt.Println("Error during unmarshall:", err)
+	// 	return
+	// }
 
 	err := ctx.ShouldBindJSON(&user)
 	if err != nil {
 		restErr := errors.BadRequestErr("invalid json")
 		ctx.JSON(restErr.Status, restErr)
+
 		return
 	}
 
@@ -38,5 +40,20 @@ func CreateUser(ctx *gin.Context) {
 }
 
 func GetUser(ctx *gin.Context) {
-	ctx.String(http.StatusNotImplemented, "implement GetUser!")
+	userID, err := strconv.ParseInt(ctx.Param("user_id"), 10, 64)
+	if err != nil {
+		parseErr := errors.BadRequestErr("user_id should be a number")
+		ctx.JSON(parseErr.Status, parseErr)
+
+		return
+	}
+
+	user, getUserErr := services.GetUser(userID)
+	if getUserErr != nil {
+		ctx.JSON(getUserErr.Status, getUserErr)
+
+		return
+	}
+
+	ctx.JSON(http.StatusOK, user)
 }
