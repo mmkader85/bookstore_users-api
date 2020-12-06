@@ -7,7 +7,7 @@ import (
 
 func GetUser(userID int64) (*users.User, *errors.RestErr) {
 	var user users.User
-	user.Id = userID
+	user.ID = userID
 	if err := user.Get(); err != nil {
 		return nil, err
 	}

@@ -9,12 +9,12 @@ import (
 var usersDB = make(map[int64]*User)
 
 func (user *User) Get() *errors.RestErr {
-	current := usersDB[user.Id]
+	current := usersDB[user.ID]
 	if current == nil {
-		return errors.NotFoundErr(fmt.Sprintf("UserId %d doesn't exist", user.Id))
+		return errors.NotFoundErr(fmt.Sprintf("UserId %d doesn't exist", user.ID))
 	}
 
-	user.Id = current.Id
+	user.ID = current.ID
 	user.FirstName = current.FirstName
 	user.LastName = current.LastName
 	user.Email = current.Email
@@ -24,9 +24,9 @@ func (user *User) Get() *errors.RestErr {
 }
 
 func (user *User) Save() *errors.RestErr {
-	current := usersDB[user.Id]
+	current := usersDB[user.ID]
 	if current != nil {
-		return errors.BadRequestErr(fmt.Sprintf("UserId %d already exists", user.Id))
+		return errors.BadRequestErr(fmt.Sprintf("UserId %d already exists", user.ID))
 	}
 
 	for _, existingUser := range usersDB {
@@ -37,7 +37,7 @@ func (user *User) Save() *errors.RestErr {
 
 	dateNow := date.GetNowString()
 	user.CreatedAt = dateNow
-	usersDB[user.Id] = user
+	usersDB[user.ID] = user
 
 	return nil
 }
