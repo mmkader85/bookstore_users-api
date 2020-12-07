@@ -9,29 +9,30 @@ import (
 	"strings"
 )
 
-var usersDB = make(map[int64]*User)
-const insertUsersQuery = "INSERT INTO users(first_name, last_name, email, created_at) VALUES(?, ?, ?, ?);"
+const emailUniqueKey	= "unq_email"
+const insertUsersQuery	= "INSERT INTO users(first_name, last_name, email, created_at) VALUES(?, ?, ?, ?);"
+const selectUserQuery	= "SELECT id, first_name, last_name, email, created_at FROM users WHERE id = ?;"
 
 func (user *User) Get() *errors.RestErr {
-	current := usersDB[user.ID]
-	if current == nil {
+	stmt, err := users_db.Client.Prepare(selectUserQuery)
+	if err != nil {
+		return errors.InternalServerErr("error preparing query for Get")
+	}
+	defer stmt.Close()
+
+	err = stmt.QueryRow(user.ID).Scan(&user.ID , &user.FirstName, &user.LastName, &user.Email, &user.CreatedAt)
+	if err == sql.ErrNoRows {
 		return errors.NotFoundErr(fmt.Sprintf("userID %d doesn't exist", user.ID))
 	}
-
-	user.ID = current.ID
-	user.FirstName = current.FirstName
-	user.LastName = current.LastName
-	user.Email = current.Email
-	user.CreatedAt = current.CreatedAt
 
 	return nil
 }
 
 func (user *User) Save() *errors.RestErr {
 	var (
-		err error
-		stmt *sql.Stmt
-		result sql.Result
+		err     error
+		stmt    *sql.Stmt
+		result  sql.Result
 	)
 
 	stmt, err = users_db.Client.Prepare(insertUsersQuery)
@@ -43,7 +44,7 @@ func (user *User) Save() *errors.RestErr {
 	user.CreatedAt = date.GetNowString()
 	result, err = stmt.Exec(user.FirstName, user.LastName, user.Email, user.CreatedAt)
 	if err != nil {
-		if strings.Contains(err.Error(), "unq_email") {
+		if strings.Contains(err.Error(), emailUniqueKey) {
 			return errors.BadRequestErr(fmt.Sprintf("email '%s' already registered", user.Email))
 		}
 		return errors.InternalServerErr("unable to execute query: " + err.Error())
