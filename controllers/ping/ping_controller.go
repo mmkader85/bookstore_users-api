@@ -1,9 +1,10 @@
 package ping
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/mmkader85/bookstore_users-api/datasources/mysql/users_db"
-	"net/http"
 )
 
 func Ping(ctx *gin.Context) {

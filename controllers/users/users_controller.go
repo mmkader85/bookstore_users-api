@@ -1,16 +1,17 @@
 package users
 
 import (
+	"net/http"
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 	"github.com/mmkader85/bookstore_users-api/domain/users"
 	"github.com/mmkader85/bookstore_users-api/services"
 	"github.com/mmkader85/bookstore_users-api/utils/errors"
-	"net/http"
-	"strconv"
 )
 
 func CreateUser(ctx *gin.Context) {
-	var user users.User
+	var user *users.User
 	// body, err := ioutil.ReadAll(ctx.Request.Body)
 	// if err != nil {
 	// 	fmt.Println(err)
@@ -24,7 +25,7 @@ func CreateUser(ctx *gin.Context) {
 
 	err := ctx.ShouldBindJSON(&user)
 	if err != nil {
-		restErr := errors.BadRequestErr("invalid json")
+		restErr := errors.BadRequestErr("Invalid JSON")
 		ctx.JSON(restErr.Status, restErr)
 
 		return
@@ -36,7 +37,7 @@ func CreateUser(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, result)
+	ctx.JSON(http.StatusCreated, &result)
 }
 
 func GetUser(ctx *gin.Context) {
@@ -55,5 +56,39 @@ func GetUser(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, user)
+	ctx.JSON(http.StatusOK, &user)
+}
+
+func UpdateUser(ctx *gin.Context) {
+	userID, err := strconv.ParseInt(ctx.Param("user_id"), 10, 64)
+	if err != nil {
+		parseErr := errors.BadRequestErr("user_id should be a number")
+		ctx.JSON(parseErr.Status, parseErr)
+
+		return
+	}
+
+	currentUser, getUserErr := services.GetUser(userID)
+	if getUserErr != nil {
+		ctx.JSON(getUserErr.Status, getUserErr)
+
+		return
+	}
+
+	err = ctx.ShouldBindJSON(&currentUser)
+	if err != nil {
+		restErr := errors.BadRequestErr("Invalid JSON")
+		ctx.JSON(restErr.Status, restErr)
+
+		return
+	}
+
+	updatedUser, updateErr := services.UpdateUser(currentUser)
+	if updateErr != nil {
+		ctx.JSON(updateErr.Status, updateErr)
+
+		return
+	}
+
+	ctx.JSON(http.StatusOK, &updatedUser)
 }
