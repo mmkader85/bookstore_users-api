@@ -7,23 +7,18 @@ import (
 	"os"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/joho/godotenv"
 )
 
 var Client *sql.DB
 
-func init() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("unable to load environment config file")
-	}
-
+func InitializeApp() {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8",
 		os.Getenv("USERS_DB_USERNAME"),
 		os.Getenv("USERS_DB_PASSWORD"),
 		os.Getenv("USERS_DB_HOST"),
 		os.Getenv("USERS_DB_NAME"))
 
+	var err error
 	Client, err = sql.Open("mysql", dsn)
 	if err != nil {
 		panic(err)
@@ -32,5 +27,5 @@ func init() {
 	if err = Client.Ping(); err != nil {
 		panic(err)
 	}
-	log.Println("database connection successful")
+	log.Println("Database connection successful.")
 }

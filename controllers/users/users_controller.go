@@ -1,6 +1,7 @@
 package users
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -10,24 +11,23 @@ import (
 	"github.com/mmkader85/bookstore_users-api/utils/errors"
 )
 
-func CreateUser(ctx *gin.Context) {
+func getUserID(userIDParam string) (int64, *errors.RestErr) {
+	userID, err := strconv.ParseInt(userIDParam, 10, 64)
+	if err != nil {
+		parseErr := errors.BadRequestErr(fmt.Sprintf("user_id '%s' should be a number", userIDParam))
+		return 0, parseErr
+	}
+
+	return userID, nil
+}
+
+func Create(ctx *gin.Context) {
 	var user *users.User
-	// body, err := ioutil.ReadAll(ctx.Request.Body)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	return
-	// }
-	//
-	// if err := json.Unmarshal(body, &user); err != nil {
-	// 	fmt.Println("Error during unmarshall:", err)
-	// 	return
-	// }
 
 	err := ctx.ShouldBindJSON(&user)
 	if err != nil {
-		restErr := errors.BadRequestErr("Invalid JSON")
+		restErr := errors.BadRequestErr(fmt.Sprintf("Invalid JSON. \n%s", err.Error()))
 		ctx.JSON(restErr.Status, restErr)
-
 		return
 	}
 
@@ -40,51 +40,62 @@ func CreateUser(ctx *gin.Context) {
 	ctx.JSON(http.StatusCreated, &result)
 }
 
-func GetUser(ctx *gin.Context) {
-	userID, err := strconv.ParseInt(ctx.Param("user_id"), 10, 64)
+func Get(ctx *gin.Context) {
+	userID, err := getUserID(ctx.Param("user_id"))
 	if err != nil {
-		parseErr := errors.BadRequestErr("user_id should be a number")
-		ctx.JSON(parseErr.Status, parseErr)
-
+		ctx.JSON(err.Status, err)
 		return
 	}
 
 	user, getUserErr := services.GetUser(userID)
 	if getUserErr != nil {
 		ctx.JSON(getUserErr.Status, getUserErr)
-
 		return
 	}
 
 	ctx.JSON(http.StatusOK, &user)
 }
 
-func UpdateUser(ctx *gin.Context) {
-	userID, err := strconv.ParseInt(ctx.Param("user_id"), 10, 64)
-	if err != nil {
-		parseErr := errors.BadRequestErr("user_id should be a number")
-		ctx.JSON(parseErr.Status, parseErr)
-
+func Update(ctx *gin.Context) {
+	userID, userIDErr := getUserID(ctx.Param("user_id"))
+	if userIDErr != nil {
+		ctx.JSON(userIDErr.Status, userIDErr)
 		return
 	}
 
 	var user users.User
 	user.ID = userID
 
-	err = ctx.ShouldBindJSON(&user)
+	err := ctx.ShouldBindJSON(&user)
 	if err != nil {
-		restErr := errors.BadRequestErr("Invalid JSON")
+		restErr := errors.BadRequestErr(fmt.Sprintf("Invalid JSON. \n%s", err.Error()))
 		ctx.JSON(restErr.Status, restErr)
-
 		return
 	}
 
-	updatedUser, updateErr := services.UpdateUser(&user)
+	isPartial := ctx.Request.Method == http.MethodPatch
+	updatedUser, updateErr := services.UpdateUser(isPartial, &user)
 	if updateErr != nil {
 		ctx.JSON(updateErr.Status, updateErr)
-
 		return
 	}
 
 	ctx.JSON(http.StatusOK, &updatedUser)
+}
+
+func Delete(ctx *gin.Context) {
+	userID, err := getUserID(ctx.Param("user_id"))
+	if err != nil {
+		ctx.JSON(err.Status, err)
+		return
+	}
+
+	deleteUserErr := services.DeleteUser(userID)
+	if deleteUserErr != nil {
+		ctx.JSON(deleteUserErr.Status, deleteUserErr)
+		return
+	}
+
+	response := map[string]string{"status": "ok", "message": "successfully deleted"}
+	ctx.JSON(http.StatusOK, &response)
 }

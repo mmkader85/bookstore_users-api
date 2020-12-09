@@ -27,7 +27,7 @@ func GetUser(userID int64) (*users.User, *errors.RestErr) {
 	return &user, nil
 }
 
-func UpdateUser(user *users.User) (*users.User, *errors.RestErr) {
+func UpdateUser(isPartial bool, user *users.User) (*users.User, *errors.RestErr) {
 	currentUser, getUserErr := GetUser(user.ID)
 	if getUserErr != nil {
 		return currentUser, getUserErr
@@ -37,13 +37,19 @@ func UpdateUser(user *users.User) (*users.User, *errors.RestErr) {
 		return nil, err
 	}
 
-	if user.FirstName != "" {
+	if isPartial {
+		if user.FirstName != "" {
+			currentUser.FirstName = user.FirstName
+		}
+		if user.LastName != "" {
+			currentUser.LastName = user.LastName
+		}
+		if user.Email != "" {
+			currentUser.Email = user.Email
+		}
+	} else {
 		currentUser.FirstName = user.FirstName
-	}
-	if user.LastName != "" {
 		currentUser.LastName = user.LastName
-	}
-	if user.Email != "" {
 		currentUser.Email = user.Email
 	}
 
@@ -52,4 +58,14 @@ func UpdateUser(user *users.User) (*users.User, *errors.RestErr) {
 	}
 
 	return currentUser, nil
+}
+
+func DeleteUser(userID int64) *errors.RestErr {
+	var user users.User
+	user.ID = userID
+	if err := user.Delete(); err != nil {
+		return err
+	}
+
+	return nil
 }

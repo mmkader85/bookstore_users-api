@@ -16,6 +16,7 @@ const (
 	insertUsersQuery = "INSERT INTO users(first_name, last_name, email, created_at) VALUES(?, ?, ?, ?);"
 	selectUserQuery  = "SELECT id, first_name, last_name, email, created_at FROM users WHERE id = ?;"
 	updateUserQuery  = "UPDATE users SET first_name = ?, last_name = ?, email = ? WHERE id = ?;"
+	deleteUserQuery  = "DELETE FROM users WHERE id = ?;"
 )
 
 func (user *User) Save() *errors.RestErr {
@@ -33,7 +34,7 @@ func (user *User) Save() *errors.RestErr {
 		}
 	}()
 	if err != nil {
-		return errors.InternalServerErr("Unable to prepare save query: " + err.Error())
+		return errors.InternalServerErr(fmt.Sprintf("Unable to prepare save query. \n%s", err.Error()))
 	}
 
 	user.CreatedAt = date_utils.GetNowString()
@@ -42,12 +43,12 @@ func (user *User) Save() *errors.RestErr {
 		if strings.Contains(err.Error(), emailUniqueKey) {
 			return errors.BadRequestErr(fmt.Sprintf("Email '%s' already registered", user.Email))
 		}
-		return errors.InternalServerErr("Unable to execute query: " + err.Error())
+		return errors.InternalServerErr(fmt.Sprintf("Unable to execute save query. \n%s", err.Error()))
 	}
 
 	user.ID, err = result.LastInsertId()
 	if err != nil {
-		return errors.InternalServerErr("Unable to get last insert id: " + err.Error())
+		return errors.InternalServerErr(fmt.Sprintf("Unable to get last insert id. \n%s", err.Error()))
 	}
 
 	return nil
@@ -62,12 +63,12 @@ func (user *User) Get() *errors.RestErr {
 		}
 	}()
 	if err != nil {
-		return errors.InternalServerErr("error preparing query for Get")
+		return errors.InternalServerErr(fmt.Sprintf("Error preparing query for 'Get' \n%s", err.Error()))
 	}
 
-	err = stmt.QueryRow(user.ID).Scan(&user.ID, &user.FirstName, &user.LastName, &user.Email, &user.CreatedAt)
-	if err == sql.ErrNoRows {
-		return errors.NotFoundErr(fmt.Sprintf("userID %d doesn't exist", user.ID))
+	row := stmt.QueryRow(user.ID).Scan(&user.ID, &user.FirstName, &user.LastName, &user.Email, &user.CreatedAt)
+	if row == sql.ErrNoRows {
+		return errors.NotFoundErr(fmt.Sprintf("UserID %d doesn't exist", user.ID))
 	}
 
 	return nil
@@ -82,7 +83,7 @@ func (user *User) Update() *errors.RestErr {
 		}
 	}()
 	if err != nil {
-		return errors.InternalServerErr("Error preparing query for Update")
+		return errors.InternalServerErr(fmt.Sprintf("Error preparing query for 'Update'. \n%s", err.Error()))
 	}
 
 	_, err = stmt.Exec(user.FirstName, user.LastName, user.Email, user.ID)
@@ -90,7 +91,35 @@ func (user *User) Update() *errors.RestErr {
 		if strings.Contains(err.Error(), emailUniqueKey) {
 			return errors.BadRequestErr(fmt.Sprintf("Email '%s' already exists", user.Email))
 		}
-		return errors.InternalServerErr("Unable to execute query: " + err.Error())
+		return errors.InternalServerErr(fmt.Sprintf("Unable to execute query. \n %s", err.Error()))
+	}
+
+	return nil
+}
+
+func (user *User) Delete() *errors.RestErr {
+	stmt, err := users_db.Client.Prepare(deleteUserQuery)
+	defer func() {
+		err := stmt.Close()
+		if err != nil {
+			log.Println("Error closing statement:", err)
+		}
+	}()
+
+	if err != nil {
+		return errors.InternalServerErr(fmt.Sprintf("Error preparing query for 'Delete'. \n%s", err.Error()))
+	}
+
+	res, deleteErr := stmt.Exec(user.ID)
+	if deleteErr != nil {
+		return errors.InternalServerErr(fmt.Sprintf("Error deleting UserID: %d. \n%s", user.ID, deleteErr.Error()))
+	}
+
+	rowsAffected, rowsErr := res.RowsAffected()
+	if rowsErr != nil {
+		return errors.InternalServerErr(fmt.Sprintf("Unable to delete UserID %d. \n%s", user.ID, rowsErr.Error()))
+	} else if rowsAffected < 1 {
+		return errors.NotFoundErr(fmt.Sprintf("UserID %d doesn't exist", user.ID))
 	}
 
 	return nil
