@@ -68,14 +68,10 @@ func UpdateUser(ctx *gin.Context) {
 		return
 	}
 
-	currentUser, getUserErr := services.GetUser(userID)
-	if getUserErr != nil {
-		ctx.JSON(getUserErr.Status, getUserErr)
+	var user users.User
+	user.ID = userID
 
-		return
-	}
-
-	err = ctx.ShouldBindJSON(&currentUser)
+	err = ctx.ShouldBindJSON(&user)
 	if err != nil {
 		restErr := errors.BadRequestErr("Invalid JSON")
 		ctx.JSON(restErr.Status, restErr)
@@ -83,7 +79,7 @@ func UpdateUser(ctx *gin.Context) {
 		return
 	}
 
-	updatedUser, updateErr := services.UpdateUser(currentUser)
+	updatedUser, updateErr := services.UpdateUser(&user)
 	if updateErr != nil {
 		ctx.JSON(updateErr.Status, updateErr)
 

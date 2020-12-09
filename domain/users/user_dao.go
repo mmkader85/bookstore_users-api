@@ -18,26 +18,6 @@ const (
 	updateUserQuery  = "UPDATE users SET first_name = ?, last_name = ?, email = ? WHERE id = ?;"
 )
 
-func (user *User) Get() *errors.RestErr {
-	stmt, err := users_db.Client.Prepare(selectUserQuery)
-	defer func() {
-		err := stmt.Close()
-		if err != nil {
-			log.Println("Error closing statement:", err)
-		}
-	}()
-	if err != nil {
-		return errors.InternalServerErr("error preparing query for Get")
-	}
-
-	err = stmt.QueryRow(user.ID).Scan(&user.ID, &user.FirstName, &user.LastName, &user.Email, &user.CreatedAt)
-	if err == sql.ErrNoRows {
-		return errors.NotFoundErr(fmt.Sprintf("userID %d doesn't exist", user.ID))
-	}
-
-	return nil
-}
-
 func (user *User) Save() *errors.RestErr {
 	var (
 		err    error
@@ -68,6 +48,26 @@ func (user *User) Save() *errors.RestErr {
 	user.ID, err = result.LastInsertId()
 	if err != nil {
 		return errors.InternalServerErr("Unable to get last insert id: " + err.Error())
+	}
+
+	return nil
+}
+
+func (user *User) Get() *errors.RestErr {
+	stmt, err := users_db.Client.Prepare(selectUserQuery)
+	defer func() {
+		err := stmt.Close()
+		if err != nil {
+			log.Println("Error closing statement:", err)
+		}
+	}()
+	if err != nil {
+		return errors.InternalServerErr("error preparing query for Get")
+	}
+
+	err = stmt.QueryRow(user.ID).Scan(&user.ID, &user.FirstName, &user.LastName, &user.Email, &user.CreatedAt)
+	if err == sql.ErrNoRows {
+		return errors.NotFoundErr(fmt.Sprintf("userID %d doesn't exist", user.ID))
 	}
 
 	return nil
