@@ -49,13 +49,13 @@ func (u *User) Validate() *errors.RestErr {
 }
 
 func (u *User) CleanResponse() map[string]string {
-	var response = map[string]string {
-			"ID":        strconv.FormatInt(u.ID, 10),
-			"FirstName": u.FirstName,
-			"LastName":  u.LastName,
-			"Email":     u.Email,
-			"CreatedAt": u.CreatedAt,
-			"Status":    u.Status,
+	var response = map[string]string{
+		"ID":        strconv.FormatInt(u.ID, 10),
+		"FirstName": u.FirstName,
+		"LastName":  u.LastName,
+		"Email":     u.Email,
+		"CreatedAt": u.CreatedAt,
+		"Status":    u.Status,
 	}
 
 	return response

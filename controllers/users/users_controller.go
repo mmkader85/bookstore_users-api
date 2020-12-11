@@ -105,11 +105,11 @@ func Delete(ctx *gin.Context) {
 func Search(ctx *gin.Context) {
 	status := ctx.Query("status")
 
-	users, searchUserErr := services.Search(status)
+	results, searchUserErr := services.Search(status)
 	if searchUserErr != nil {
 		ctx.JSON(searchUserErr.Status, searchUserErr)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, &users)
+	ctx.JSON(http.StatusOK, &results)
 }
