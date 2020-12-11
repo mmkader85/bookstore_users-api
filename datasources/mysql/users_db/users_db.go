@@ -11,7 +11,7 @@ import (
 
 var Client *sql.DB
 
-func InitializeApp() {
+func InitializeDB() {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=utf8",
 		os.Getenv("USERS_DB_USERNAME"),
 		os.Getenv("USERS_DB_PASSWORD"),

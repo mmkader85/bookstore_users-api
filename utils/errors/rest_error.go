@@ -1,6 +1,10 @@
 package errors
 
-import "net/http"
+import (
+	"log"
+	"net/http"
+	"runtime"
+)
 
 type RestErr struct {
 	Message string `json:"message"`
@@ -9,6 +13,9 @@ type RestErr struct {
 }
 
 func BadRequestErr(message string) *RestErr {
+	pc, fn, line, _ := runtime.Caller(1)
+	log.Printf("Error in %s\n [%s:%d] \n%s", runtime.FuncForPC(pc).Name(), fn, line, message)
+
 	return &RestErr{
 		Message: message,
 		Status:  http.StatusBadRequest,
@@ -17,6 +24,9 @@ func BadRequestErr(message string) *RestErr {
 }
 
 func NotFoundErr(message string) *RestErr {
+	pc, fn, line, _ := runtime.Caller(1)
+	log.Printf("Error in %s\n [%s:%d] \n%s", runtime.FuncForPC(pc).Name(), fn, line, message)
+
 	return &RestErr{
 		Message: message,
 		Status:  http.StatusNotFound,
@@ -25,6 +35,9 @@ func NotFoundErr(message string) *RestErr {
 }
 
 func InternalServerErr(message string) *RestErr {
+	pc, fn, line, _ := runtime.Caller(1)
+	log.Printf("Error in %s\n [%s:%d] \n%s", runtime.FuncForPC(pc).Name(), fn, line, message)
+
 	return &RestErr{
 		Message: message,
 		Status:  http.StatusInternalServerError,

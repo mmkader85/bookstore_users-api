@@ -1,7 +1,7 @@
 package app
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mmkader85/bookstore_users-api/datasources/mysql/users_db"
@@ -13,10 +13,10 @@ var (
 
 func StartApplication() {
 	loadEnv()
-	users_db.InitializeApp()
+	users_db.InitializeDB()
 	mapUrls()
 	err := router.Run(":8000")
 	if err != nil {
-		fmt.Println("Server Error:", err)
+		log.Println("Server Error:", err)
 	}
 }
