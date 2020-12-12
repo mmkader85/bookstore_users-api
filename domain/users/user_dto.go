@@ -6,7 +6,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/mmkader85/bookstore_users-api/utils/errors"
+	"github.com/mmkader85/bookstore_users-api/utils"
 )
 
 const (
@@ -41,23 +41,23 @@ type PrivateUser struct {
 	Status    string `json:"status"`
 }
 
-func (u *User) Validate() *errors.RestErr {
+func (u *User) Validate() *utils.RestErr {
 	u.FirstName = strings.TrimSpace(u.FirstName)
 	u.LastName = strings.TrimSpace(u.LastName)
 
 	u.Email = strings.TrimSpace(strings.ToLower(u.Email))
 	if u.Email == "" {
-		return errors.BadRequestErr("Empty user email.")
+		return utils.RestErrUtils.BadRequestErr("Empty user email.")
 	}
 
 	u.Status = strings.TrimSpace(strings.ToLower(u.Status))
 	if u.Status != UserStatusActive && u.Status != UserStatusSuspended && u.Status != UserStatusDeleted {
-		return errors.BadRequestErr(fmt.Sprintf("User status should be %s/%s/%s only.", UserStatusActive, UserStatusSuspended, UserStatusDeleted))
+		return utils.RestErrUtils.BadRequestErr(fmt.Sprintf("User status should be %s/%s/%s only.", UserStatusActive, UserStatusSuspended, UserStatusDeleted))
 	}
 
 	u.Password = strings.TrimSpace(strings.ToLower(u.Password))
 	if u.Password == "" {
-		return errors.BadRequestErr("Empty user password.")
+		return utils.RestErrUtils.BadRequestErr("Empty user password.")
 	}
 
 	return nil
