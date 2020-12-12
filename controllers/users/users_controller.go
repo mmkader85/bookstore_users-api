@@ -39,7 +39,8 @@ func Create(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusCreated, result.CleanResponse())
+	var isPublic = ctx.GetHeader("X-Public") == "true"
+	ctx.JSON(http.StatusCreated, result.Marshal(isPublic))
 }
 
 func Get(ctx *gin.Context) {
@@ -55,7 +56,8 @@ func Get(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, user.CleanResponse())
+	var isPublic = ctx.GetHeader("X-Public") == "true"
+	ctx.JSON(http.StatusOK, user.Marshal(isPublic))
 }
 
 func Update(ctx *gin.Context) {
@@ -82,7 +84,8 @@ func Update(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, updatedUser.CleanResponse())
+	var isPublic = ctx.GetHeader("X-Public") == "true"
+	ctx.JSON(http.StatusOK, updatedUser.Marshal(isPublic))
 }
 
 func Delete(ctx *gin.Context) {
@@ -111,5 +114,11 @@ func Search(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, &results)
+	var isPublic = ctx.GetHeader("X-Public") == "true"
+	var output = make([]interface{}, len(results))
+	for index, user := range results {
+		output[index] = user.Marshal(isPublic)
+	}
+
+	ctx.JSON(http.StatusOK, output)
 }

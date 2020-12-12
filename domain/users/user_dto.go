@@ -1,6 +1,8 @@
 package users
 
 import (
+	"encoding/json"
+	"log"
 	"strconv"
 	"strings"
 
@@ -17,7 +19,14 @@ type User struct {
 	Password  string `json:"password"`
 }
 
-type OutputUser struct {
+type PublicUser struct {
+	ID        int64  `json:"id"`
+	Email     string `json:"email" binding:"required"`
+	CreatedAt string `json:"created_at"`
+	Status    string `json:"status"`
+}
+
+type PrivateUser struct {
 	ID        int64  `json:"id"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
@@ -46,6 +55,31 @@ func (u *User) Validate() *errors.RestErr {
 	}
 
 	return nil
+}
+
+// Marshall can be done manually or thru json.Marshal().
+// This method demonstrates both.
+func (u User) Marshal(isPublic bool) interface{} {
+	if isPublic {
+		return &PublicUser{
+			ID:        u.ID,
+			Email:     u.Email,
+			CreatedAt: u.CreatedAt,
+			Status:    u.Status,
+		}
+	}
+
+	user, err := json.Marshal(u)
+	if err != nil {
+		log.Fatal("Unable to marshall user.")
+	}
+
+	var privateUser PrivateUser
+	if err = json.Unmarshal(user, &privateUser); err != nil {
+		log.Fatal("Unable to unmarshall user.")
+	}
+
+	return privateUser
 }
 
 func (u *User) CleanResponse() map[string]string {

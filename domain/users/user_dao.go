@@ -114,7 +114,7 @@ func (u *User) Delete() *errors.RestErr {
 	return nil
 }
 
-func (u *User) FindByStatus() ([]map[string]string, *errors.RestErr) {
+func (u *User) FindByStatus() ([]User, *errors.RestErr) {
 	stmt, err := users_db.Client.Prepare(findUserByStatusQuery)
 	if err != nil {
 		return nil, errors.InternalServerErr(fmt.Sprintf("Error preparing query for 'FindByStatus'. %s", err.Error()))
@@ -133,14 +133,14 @@ func (u *User) FindByStatus() ([]map[string]string, *errors.RestErr) {
 		_ = rows.Close()
 	}()
 
-	var users = make([]map[string]string, 0)
+	var users = make([]User, 0)
 	for rows.Next() {
 		var u User
 		scanErr := rows.Scan(&u.ID, &u.FirstName, &u.LastName, &u.Email, &u.CreatedAt, &u.Status)
 		if scanErr != nil {
 			return nil, errors.InternalServerErr(fmt.Sprintf("Error scanning row in 'FindByStatus'. %s", scanErr.Error()))
 		}
-		users = append(users, u.CleanResponse())
+		users = append(users, u)
 	}
 
 	return users, nil

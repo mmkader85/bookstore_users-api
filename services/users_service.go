@@ -83,7 +83,7 @@ func DeleteUser(userID int64) *errors.RestErr {
 	return nil
 }
 
-func Search(status string) ([]map[string]string, *errors.RestErr) {
+func Search(status string) ([]users.User, *errors.RestErr) {
 	user := &users.User{Status: status}
 
 	return user.FindByStatus()
