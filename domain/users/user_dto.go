@@ -2,11 +2,17 @@ package users
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
-	"strconv"
 	"strings"
 
 	"github.com/mmkader85/bookstore_users-api/utils/errors"
+)
+
+const (
+	UserStatusActive    = "active"
+	UserStatusDeleted   = "deleted"
+	UserStatusSuspended = "suspended"
 )
 
 type User struct {
@@ -45,8 +51,8 @@ func (u *User) Validate() *errors.RestErr {
 	}
 
 	u.Status = strings.TrimSpace(strings.ToLower(u.Status))
-	if u.Status != "active" && u.Status != "suspended" && u.Status != "deleted" {
-		return errors.BadRequestErr("User status should be active/suspended/deleted only.")
+	if u.Status != UserStatusActive && u.Status != UserStatusSuspended && u.Status != UserStatusDeleted {
+		return errors.BadRequestErr(fmt.Sprintf("User status should be %s/%s/%s only.", UserStatusActive, UserStatusSuspended, UserStatusDeleted))
 	}
 
 	u.Password = strings.TrimSpace(strings.ToLower(u.Password))
@@ -80,17 +86,4 @@ func (u User) Marshal(isPublic bool) interface{} {
 	}
 
 	return privateUser
-}
-
-func (u *User) CleanResponse() map[string]string {
-	var response = map[string]string{
-		"ID":        strconv.FormatInt(u.ID, 10),
-		"FirstName": u.FirstName,
-		"LastName":  u.LastName,
-		"Email":     u.Email,
-		"CreatedAt": u.CreatedAt,
-		"Status":    u.Status,
-	}
-
-	return response
 }
