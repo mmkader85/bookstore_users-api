@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/mmkader85/bookstore_users-api/datasources/mysql/users_db"
+	"github.com/mmkader85/bookstore_users-api/logger"
 	"github.com/mmkader85/bookstore_users-api/utils"
 )
 
@@ -20,14 +21,16 @@ const (
 
 func (u *User) Save() *utils.RestErr {
 	var (
-		err    error
-		stmt   *sql.Stmt
-		result sql.Result
+		err          error
+		stmt         *sql.Stmt
+		result       sql.Result
+		clientErrMsg = "Unable to save user"
 	)
 
 	stmt, err = users_db.Client.Prepare(insertUsersQuery)
 	if err != nil {
-		return utils.RestErrUtils.InternalServerErr(fmt.Sprintf("Unable to prepare save query. %s", err.Error()))
+		logger.Error("Unable to prepare save query.", err)
+		return utils.RestErrUtils.InternalServerErr(clientErrMsg)
 	}
 	defer func() {
 		_ = stmt.Close()
@@ -37,23 +40,28 @@ func (u *User) Save() *utils.RestErr {
 	result, err = stmt.Exec(u.FirstName, u.LastName, u.Email, u.CreatedAt, u.Status, u.Password)
 	if err != nil {
 		if strings.Contains(err.Error(), emailUniqueKey) {
-			return utils.RestErrUtils.BadRequestErr(fmt.Sprintf("Email '%s' already registered", u.Email))
+			logger.Info(fmt.Sprintf("Email '%s' already registered.", u.Email))
+			return utils.RestErrUtils.BadRequestErr(fmt.Sprintf("Email '%s' already registered.", u.Email))
 		}
-		return utils.RestErrUtils.InternalServerErr(fmt.Sprintf("Unable to execute save query. %s", err.Error()))
+		logger.Error("Unable to execute save query.", err)
+		return utils.RestErrUtils.InternalServerErr(clientErrMsg)
 	}
 
 	u.ID, err = result.LastInsertId()
 	if err != nil {
-		return utils.RestErrUtils.InternalServerErr(fmt.Sprintf("Unable to get last insert id. %s", err.Error()))
+		logger.Error("Unable to get last insert id.", err)
+		return utils.RestErrUtils.InternalServerErr(clientErrMsg)
 	}
 
 	return nil
 }
 
 func (u *User) Get() *utils.RestErr {
+	clientErrMsg := "Unable to get user."
 	stmt, err := users_db.Client.Prepare(selectUserQuery)
 	if err != nil {
-		return utils.RestErrUtils.InternalServerErr(fmt.Sprintf("Error preparing query for 'Get' %s", err.Error()))
+		logger.Error("Error preparing query for 'Get'.", err)
+		return utils.RestErrUtils.InternalServerErr(clientErrMsg)
 	}
 	defer func() {
 		_ = stmt.Close()
@@ -61,18 +69,22 @@ func (u *User) Get() *utils.RestErr {
 
 	err = stmt.QueryRow(u.ID).Scan(&u.ID, &u.FirstName, &u.LastName, &u.Email, &u.CreatedAt, &u.Status, &u.Password)
 	if err == sql.ErrNoRows {
+		logger.Info(fmt.Sprintf("UserID %d doesn't exist", u.ID))
 		return utils.RestErrUtils.NotFoundErr(fmt.Sprintf("UserID %d doesn't exist", u.ID))
 	} else if err != nil {
-		return utils.RestErrUtils.InternalServerErr(fmt.Sprintf("Error querying row for 'Get' %s", err.Error()))
+		logger.Error("Error querying row for 'Get'.", err)
+		return utils.RestErrUtils.InternalServerErr(clientErrMsg)
 	}
 
 	return nil
 }
 
 func (u *User) Update() *utils.RestErr {
+	clientErrMsg := "Unable to update user."
 	stmt, err := users_db.Client.Prepare(updateUserQuery)
 	if err != nil {
-		return utils.RestErrUtils.InternalServerErr(fmt.Sprintf("Error preparing query for 'Update'. %s", err.Error()))
+		logger.Error("Error preparing query for 'Update'.", err)
+		return utils.RestErrUtils.InternalServerErr(clientErrMsg)
 	}
 	defer func() {
 		_ = stmt.Close()
@@ -81,18 +93,22 @@ func (u *User) Update() *utils.RestErr {
 	_, err = stmt.Exec(u.FirstName, u.LastName, u.Email, u.Status, u.ID)
 	if err != nil {
 		if strings.Contains(err.Error(), emailUniqueKey) {
-			return utils.RestErrUtils.BadRequestErr(fmt.Sprintf("Email '%s' already exists", u.Email))
+			logger.Info(fmt.Sprintf("Email '%s' already exists.", u.Email))
+			return utils.RestErrUtils.BadRequestErr(fmt.Sprintf("Email '%s' already exists.", u.Email))
 		}
-		return utils.RestErrUtils.InternalServerErr(fmt.Sprintf("Unable to execute query. %s", err.Error()))
+		logger.Error("Error executing query for 'Update'.", err)
+		return utils.RestErrUtils.InternalServerErr(clientErrMsg)
 	}
 
 	return nil
 }
 
 func (u *User) Delete() *utils.RestErr {
+	clientErrMsg := "Unable to delete user."
 	stmt, err := users_db.Client.Prepare(deleteUserQuery)
 	if err != nil {
-		return utils.RestErrUtils.InternalServerErr(fmt.Sprintf("Error preparing query for 'Delete'. %s", err.Error()))
+		logger.Error("Error preparing query for 'Delete'.", err)
+		return utils.RestErrUtils.InternalServerErr(clientErrMsg)
 	}
 	defer func() {
 		_ = stmt.Close()
@@ -100,13 +116,16 @@ func (u *User) Delete() *utils.RestErr {
 
 	res, deleteErr := stmt.Exec(u.ID)
 	if deleteErr != nil {
-		return utils.RestErrUtils.InternalServerErr(fmt.Sprintf("Error deleting UserID: %d. %s", u.ID, deleteErr.Error()))
+		logger.Error("Error executing query for 'Delete'.", deleteErr)
+		return utils.RestErrUtils.InternalServerErr(clientErrMsg)
 	}
 
 	rowsAffected, rowsErr := res.RowsAffected()
 	if rowsErr != nil {
-		return utils.RestErrUtils.InternalServerErr(fmt.Sprintf("Unable to delete UserID %d. %s", u.ID, rowsErr.Error()))
+		logger.Error("Error getting RowsAffected() in 'Delete'.", rowsErr)
+		return utils.RestErrUtils.InternalServerErr(clientErrMsg)
 	} else if rowsAffected < 1 {
+		logger.Info(fmt.Sprintf("UserID %d doesn't exist", u.ID))
 		return utils.RestErrUtils.NotFoundErr(fmt.Sprintf("UserID %d doesn't exist", u.ID))
 	}
 
@@ -114,9 +133,11 @@ func (u *User) Delete() *utils.RestErr {
 }
 
 func (u *User) FindByStatus() ([]User, *utils.RestErr) {
+	clientErrMsg := "Unable to search user by status."
 	stmt, err := users_db.Client.Prepare(findUserByStatusQuery)
 	if err != nil {
-		return nil, utils.RestErrUtils.InternalServerErr(fmt.Sprintf("Error preparing query for 'FindByStatus'. %s", err.Error()))
+		logger.Error("Error preparing query for 'FindByStatus'.", err)
+		return nil, utils.RestErrUtils.InternalServerErr(clientErrMsg)
 	}
 	defer func() {
 		_ = stmt.Close()
@@ -124,9 +145,11 @@ func (u *User) FindByStatus() ([]User, *utils.RestErr) {
 
 	rows, queryErr := stmt.Query(u.Status)
 	if queryErr == sql.ErrNoRows {
+		logger.Info(fmt.Sprintf("No user found with status %s.", u.Status))
 		return nil, utils.RestErrUtils.NotFoundErr(fmt.Sprintf("No user found with status %s.", u.Status))
 	} else if queryErr != nil {
-		return nil, utils.RestErrUtils.InternalServerErr(fmt.Sprintf("Error querying for 'FindByStatus'. %s", queryErr.Error()))
+		logger.Error("Error querying for 'FindByStatus'.", queryErr)
+		return nil, utils.RestErrUtils.InternalServerErr(clientErrMsg)
 	}
 	defer func() {
 		_ = rows.Close()
@@ -137,7 +160,8 @@ func (u *User) FindByStatus() ([]User, *utils.RestErr) {
 		var u User
 		scanErr := rows.Scan(&u.ID, &u.FirstName, &u.LastName, &u.Email, &u.CreatedAt, &u.Status)
 		if scanErr != nil {
-			return nil, utils.RestErrUtils.InternalServerErr(fmt.Sprintf("Error scanning row in 'FindByStatus'. %s", scanErr.Error()))
+			logger.Error("Error scanning row in 'FindByStatus'.", scanErr)
+			return nil, utils.RestErrUtils.InternalServerErr(clientErrMsg)
 		}
 		users = append(users, u)
 	}
