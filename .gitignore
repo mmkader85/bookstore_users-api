@@ -18,3 +18,4 @@ dbconfig.yml
 
 # IDE
 .idea/
+.DS_Store
