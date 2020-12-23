@@ -1,0 +1,15 @@
+FROM golang:1.14.5-alpine
+
+RUN apk update \
+    && apk upgrade \
+    && apk add --no-cache make gcc build-base
+
+WORKDIR ${GOPATH}/src
+
+COPY . .
+
+RUN go mod download
+
+RUN go get github.com/rubenv/sql-migrate/...
+
+ENTRYPOINT go build -o api && ./api

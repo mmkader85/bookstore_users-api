@@ -1,5 +1,21 @@
 # Bookstore users API - Golang (Gin + MVC pattern + MySQL)
 
+_**!!! This is not a production ready application. Developed while studying !!!**_
+
+### Docker
+1. Create `~/Docker/mysql_data` directory in host(local).
+2. Move .env.dist to .env & update the configs, if required
+3. Move dbconfig.yml.dist to dbconfig.yml & update the configs, if required
+    * In local, MySQL host should be name of the database container
+4. `$ docker-compose up -d --build`
+    * `api` may not be running as it requires the database. 'mysql' image is suppose to create the DB by default, but it is not
+    * Connect to the database and create the database by hand
+    * Run the command `$ docker-compose up -d --build` once again
+5. SSH into the api container and apply db migrations
+    * `$ docker exec -it bookstore_users-api sh`
+    * Apply the migrations `$ sql-migrate up`
+    * Verify the migrations `$ sql-migrate status`
+
 ### SQL Migrations
 Required package: https://github.com/rubenv/sql-migrate
 
@@ -52,7 +68,7 @@ curl --location --request PUT 'http://localhost:8000/user/1' \
 
 ##### Patch User
 ```
-curl --location --request PATCH 'http://localhost:8000/user/12' \
+curl --location --request PATCH 'http://localhost:8000/user/1' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "first_name": "F.Name",

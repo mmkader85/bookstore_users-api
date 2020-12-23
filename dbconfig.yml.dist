@@ -1,10 +1,10 @@
 development:
   dialect: mysql
-  datasource: root:password@tcp(localhost:3306)/bookstore_users_db?parseTime=true&charset=utf8
+  datasource: root:password@tcp(bookstore_users-db:3306)/bookstore_users_db?parseTime=true&charset=utf8
   table: migrations
   dir: migrations/mysql
 test:
   dialect: mysql
-  datasource: root:password@tcp(localhost:3306)/bookstore_users_db?parseTime=true&charset=utf8
+  datasource: root:password@tcp(bookstore_users-db:3306)/bookstore_users_db?parseTime=true&charset=utf8
   table: migrations
   dir: migrations/mysql

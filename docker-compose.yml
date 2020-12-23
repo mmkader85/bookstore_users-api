@@ -1,0 +1,36 @@
+version: '3'
+
+services:
+  api:
+    networks:
+      - bookstore
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile-api
+    ports:
+      - 8000:8000
+    volumes:
+      - .:/go/src
+    depends_on:
+      - database
+    container_name: bookstore_users-api
+    env_file:
+      - ".env"
+
+  database:
+    networks:
+      - bookstore
+    image: mysql:5.7.32
+    ports:
+      - 33062:3306
+    volumes:
+      - ~/Docker/mysql_data:/var/lib/mysql
+    container_name: bookstore_users-db
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_USER: root
+      MYSQL_PASSWORD: password
+      MYSQL_DATABASE: bookstore_users_db
+
+networks:
+  bookstore:
