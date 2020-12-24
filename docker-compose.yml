@@ -23,7 +23,7 @@ services:
       - bookstore
     image: mysql:5.7.32
     ports:
-      - 33060:3306
+      - 33062:3306
     volumes:
       - ./docker/mysql:/docker-entrypoint-initdb.d
       - ~/Docker/mysql_data:/var/lib/mysql

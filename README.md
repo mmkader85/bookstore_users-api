@@ -7,9 +7,7 @@ _**!!! This is not a production ready application. Developed while studying !!!*
 2. Move dbconfig.yml.dist to dbconfig.yml & update the configs, if required
     * In local, MySQL host should be name of the database container
 3. `$ docker-compose up -d --build`
-    * `api` may not be running as it requires the database. DB creation takes a while 
-    * Verify that the DB has been created by connecting to the database container
-    * Run the command `$ docker-compose up -d`
+    * `api` may not be running as it requires the database. DB creation takes a while, so it will attempt an auto restart.
 4. SSH into the api container and apply db migrations
     * `$ docker exec -it bookstore_users-api sh`
     * Apply the migrations `$ sql-migrate up`
