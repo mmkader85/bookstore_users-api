@@ -3,15 +3,14 @@
 _**!!! This is not a production ready application. Developed while studying !!!**_
 
 ### Docker
-1. Create `~/Docker/mysql_data` directory in host(local).
-2. Move .env.dist to .env & update the configs, if required
-3. Move dbconfig.yml.dist to dbconfig.yml & update the configs, if required
+1. Move .env.dist to .env & update the configs, if required
+2. Move dbconfig.yml.dist to dbconfig.yml & update the configs, if required
     * In local, MySQL host should be name of the database container
-4. `$ docker-compose up -d --build`
+3. `$ docker-compose up -d --build`
     * `api` may not be running as it requires the database. DB creation takes a while 
     * Verify that the DB has been created by connecting to the database container
     * Run the command `$ docker-compose up -d`
-5. SSH into the api container and apply db migrations
+4. SSH into the api container and apply db migrations
     * `$ docker exec -it bookstore_users-api sh`
     * Apply the migrations `$ sql-migrate up`
     * Verify the migrations `$ sql-migrate status`
