@@ -50,6 +50,7 @@ curl --location --request GET 'http://localhost:8000/user/1' \
 curl --location --request GET 'http://localhost:8000/internal/user/search?status=active' \
 --header 'X-Private: true'
 ```
+`status` is required (`active`/`suspended`/`deleted`). Results are paginated with the optional `limit` (default 100, max 1000) and `offset` query parameters.
 
 ##### Update User
 ```

@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -29,7 +30,7 @@ func setupMockDB(t *testing.T) sqlmock.Sqlmock {
 
 func TestGet_Success(t *testing.T) {
 	mock := setupMockDB(t)
-	mock.ExpectPrepare("SELECT id, first_name").ExpectQuery().WithArgs(int64(1)).
+	mock.ExpectQuery("SELECT id, first_name").WithArgs(int64(1)).
 		WillReturnRows(sqlmock.NewRows(userCols).AddRow(1, "John", "Doe", "j@e.c", "ts", "active", "hash"))
 
 	user, err := UserService.Get(1)
@@ -41,7 +42,7 @@ func TestGet_Success(t *testing.T) {
 
 func TestGet_NotFound(t *testing.T) {
 	mock := setupMockDB(t)
-	mock.ExpectPrepare("SELECT id, first_name").ExpectQuery().WillReturnRows(sqlmock.NewRows(userCols))
+	mock.ExpectQuery("SELECT id, first_name").WillReturnRows(sqlmock.NewRows(userCols))
 
 	user, err := UserService.Get(1)
 
@@ -52,7 +53,7 @@ func TestGet_NotFound(t *testing.T) {
 
 func TestCreate_Success(t *testing.T) {
 	mock := setupMockDB(t)
-	mock.ExpectPrepare("INSERT INTO users").ExpectExec().
+	mock.ExpectExec("INSERT INTO users").
 		WithArgs("John", "Doe", "j@e.c", sqlmock.AnyArg(), "active", sqlmock.AnyArg()).
 		WillReturnResult(sqlmock.NewResult(11, 1))
 
@@ -64,7 +65,7 @@ func TestCreate_Success(t *testing.T) {
 	assert.EqualValues(t, 11, user.ID)
 	assert.Equal(t, "j@e.c", user.Email)
 	assert.NotEqual(t, "Secret1", user.Password, "password must be stored hashed")
-	assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(user.Password), []byte("secret1")))
+	assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(user.Password), []byte("Secret1")))
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -97,7 +98,7 @@ func TestCreate_HashError(t *testing.T) {
 
 func TestCreate_SaveError(t *testing.T) {
 	mock := setupMockDB(t)
-	mock.ExpectPrepare("INSERT INTO users").ExpectExec().WillReturnError(errors.New("boom"))
+	mock.ExpectExec("INSERT INTO users").WillReturnError(errors.New("boom"))
 
 	user, err := UserService.Create(&users.User{Email: "a@b.c", Status: "active", Password: "x"})
 
@@ -107,14 +108,14 @@ func TestCreate_SaveError(t *testing.T) {
 }
 
 func expectGet(mock sqlmock.Sqlmock, id int64) {
-	mock.ExpectPrepare("SELECT id, first_name").ExpectQuery().WithArgs(id).
+	mock.ExpectQuery("SELECT id, first_name").WithArgs(id).
 		WillReturnRows(sqlmock.NewRows(userCols).AddRow(id, "John", "Doe", "j@e.c", "ts", "active", "hash"))
 }
 
 func TestUpdate_Full(t *testing.T) {
 	mock := setupMockDB(t)
 	expectGet(mock, 1)
-	mock.ExpectPrepare("UPDATE users SET").ExpectExec().
+	mock.ExpectExec("UPDATE users SET").
 		WithArgs("New", "Name", "n@e.c", "suspended", int64(1)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
@@ -129,7 +130,7 @@ func TestUpdate_Full(t *testing.T) {
 func TestUpdate_Partial(t *testing.T) {
 	mock := setupMockDB(t)
 	expectGet(mock, 1)
-	mock.ExpectPrepare("UPDATE users SET").ExpectExec().
+	mock.ExpectExec("UPDATE users SET").
 		WithArgs("John", "Doe", "j@e.c", "suspended", int64(1)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
@@ -145,7 +146,7 @@ func TestUpdate_Partial(t *testing.T) {
 func TestUpdate_PartialAllFields(t *testing.T) {
 	mock := setupMockDB(t)
 	expectGet(mock, 1)
-	mock.ExpectPrepare("UPDATE users SET").ExpectExec().
+	mock.ExpectExec("UPDATE users SET").
 		WithArgs("A", "B", "c@d.e", "deleted", int64(1)).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
@@ -157,7 +158,7 @@ func TestUpdate_PartialAllFields(t *testing.T) {
 
 func TestUpdate_NotFound(t *testing.T) {
 	mock := setupMockDB(t)
-	mock.ExpectPrepare("SELECT id, first_name").ExpectQuery().WillReturnRows(sqlmock.NewRows(userCols))
+	mock.ExpectQuery("SELECT id, first_name").WillReturnRows(sqlmock.NewRows(userCols))
 
 	user, err := UserService.Update(false, &users.User{ID: 1})
 
@@ -180,7 +181,7 @@ func TestUpdate_ValidationError(t *testing.T) {
 func TestUpdate_DBError(t *testing.T) {
 	mock := setupMockDB(t)
 	expectGet(mock, 1)
-	mock.ExpectPrepare("UPDATE users SET").ExpectExec().WillReturnError(errors.New("boom"))
+	mock.ExpectExec("UPDATE users SET").WillReturnError(errors.New("boom"))
 
 	user, err := UserService.Update(false, &users.User{ID: 1, Email: "a@b.c", Status: "active"})
 
@@ -191,14 +192,14 @@ func TestUpdate_DBError(t *testing.T) {
 
 func TestDelete_Success(t *testing.T) {
 	mock := setupMockDB(t)
-	mock.ExpectPrepare("DELETE FROM users").ExpectExec().WithArgs(int64(4)).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("DELETE FROM users").WithArgs(int64(4)).WillReturnResult(sqlmock.NewResult(0, 1))
 
 	assert.Nil(t, UserService.Delete(4))
 }
 
 func TestDelete_NotFound(t *testing.T) {
 	mock := setupMockDB(t)
-	mock.ExpectPrepare("DELETE FROM users").ExpectExec().WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec("DELETE FROM users").WillReturnResult(sqlmock.NewResult(0, 0))
 
 	err := UserService.Delete(4)
 
@@ -208,10 +209,10 @@ func TestDelete_NotFound(t *testing.T) {
 
 func TestSearch_Success(t *testing.T) {
 	mock := setupMockDB(t)
-	mock.ExpectPrepare("SELECT id, first_name").ExpectQuery().WithArgs("active").
+	mock.ExpectQuery("SELECT id, first_name").WithArgs("active", DefaultSearchLimit, 0).
 		WillReturnRows(sqlmock.NewRows(userCols[:6]).AddRow(1, "A", "B", "a@b.c", "ts", "active"))
 
-	result, err := UserService.Search("active")
+	result, err := UserService.Search("Active", 0, -3)
 
 	assert.Nil(t, err)
 	assert.Len(t, result, 1)
@@ -219,10 +220,73 @@ func TestSearch_Success(t *testing.T) {
 
 func TestSearch_Error(t *testing.T) {
 	mock := setupMockDB(t)
-	mock.ExpectPrepare("SELECT id, first_name").WillReturnError(errors.New("boom"))
+	mock.ExpectQuery("SELECT id, first_name").WillReturnError(errors.New("boom"))
 
-	_, err := UserService.Search("active")
+	_, err := UserService.Search("active", 0, 0)
 
 	require.NotNil(t, err)
 	assert.Equal(t, http.StatusInternalServerError, err.Status)
+}
+
+func TestCreate_NilUser(t *testing.T) {
+	setupMockDB(t)
+
+	user, err := UserService.Create(nil)
+
+	assert.Nil(t, user)
+	require.NotNil(t, err)
+	assert.Equal(t, http.StatusBadRequest, err.Status)
+}
+
+func TestCreate_EmptyPassword(t *testing.T) {
+	setupMockDB(t)
+
+	user, err := UserService.Create(&users.User{Email: "a@b.c", Status: "active", Password: "  "})
+
+	assert.Nil(t, user)
+	require.NotNil(t, err)
+	assert.Equal(t, http.StatusBadRequest, err.Status)
+}
+
+func TestCreate_PasswordTooLongForBcrypt(t *testing.T) {
+	setupMockDB(t)
+
+	user, err := UserService.Create(&users.User{Email: "a@b.c", Status: "active", Password: strings.Repeat("a", 100)})
+
+	assert.Nil(t, user)
+	require.NotNil(t, err)
+	assert.Equal(t, http.StatusBadRequest, err.Status)
+}
+
+func TestUpdate_DoesNotRequirePasswordOrRehash(t *testing.T) {
+	mock := setupMockDB(t)
+	mock.ExpectQuery("SELECT id, first_name").WithArgs(int64(1)).
+		WillReturnRows(sqlmock.NewRows(userCols).AddRow(1, "John", "Doe", "j@e.c", "ts", "active", ""))
+	mock.ExpectExec("UPDATE users SET").WillReturnResult(sqlmock.NewResult(0, 1))
+
+	_, err := UserService.Update(true, &users.User{ID: 1, FirstName: "X"})
+
+	assert.Nil(t, err)
+}
+
+func TestSearch_InvalidStatus(t *testing.T) {
+	setupMockDB(t)
+
+	for _, status := range []string{"", "bogus"} {
+		result, err := UserService.Search(status, 10, 0)
+		assert.Nil(t, result)
+		require.NotNil(t, err)
+		assert.Equal(t, http.StatusBadRequest, err.Status)
+	}
+}
+
+func TestSearch_LimitIsCapped(t *testing.T) {
+	mock := setupMockDB(t)
+	mock.ExpectQuery("SELECT id, first_name").WithArgs("active", MaxSearchLimit, 40).
+		WillReturnRows(sqlmock.NewRows(userCols[:6]))
+
+	_, err := UserService.Search("active", 1000000, 40)
+
+	assert.Nil(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
 }

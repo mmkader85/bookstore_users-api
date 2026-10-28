@@ -2,7 +2,6 @@ package users
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -23,7 +22,7 @@ func parseUserIDParam(userIDParam string) (int64, *utils.RestErr) {
 }
 
 func Create(ctx *gin.Context) {
-	var user *users.User
+	var user users.User
 
 	err := ctx.ShouldBindJSON(&user)
 	if err != nil {
@@ -32,8 +31,7 @@ func Create(ctx *gin.Context) {
 		return
 	}
 
-	result, createUserErr := services.UserService.Create(user)
-	log.Println("Result", result)
+	result, createUserErr := services.UserService.Create(&user)
 	if createUserErr != nil {
 		ctx.JSON(createUserErr.Status, createUserErr)
 		return
@@ -68,7 +66,6 @@ func Update(ctx *gin.Context) {
 	}
 
 	var user users.User
-	user.ID = userID
 
 	err := ctx.ShouldBindJSON(&user)
 	if err != nil {
@@ -76,6 +73,8 @@ func Update(ctx *gin.Context) {
 		ctx.JSON(restErr.Status, restErr)
 		return
 	}
+	// The URL is the source of truth; a body "id" must never redirect the update to another user.
+	user.ID = userID
 
 	isPartial := ctx.Request.Method == http.MethodPatch
 	updatedUser, updateErr := services.UserService.Update(isPartial, &user)
@@ -107,8 +106,10 @@ func Delete(ctx *gin.Context) {
 
 func Search(ctx *gin.Context) {
 	status := ctx.Query("status")
+	limit, _ := strconv.Atoi(ctx.Query("limit"))
+	offset, _ := strconv.Atoi(ctx.Query("offset"))
 
-	results, searchUserErr := services.UserService.Search(status)
+	results, searchUserErr := services.UserService.Search(status, limit, offset)
 	if searchUserErr != nil {
 		ctx.JSON(searchUserErr.Status, searchUserErr)
 		return

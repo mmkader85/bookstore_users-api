@@ -45,4 +45,5 @@ func TestPing_DBDown(t *testing.T) {
 	w := serve(t)
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.NotContains(t, w.Body.String(), "db down", "internal DB errors must not leak to clients")
 }

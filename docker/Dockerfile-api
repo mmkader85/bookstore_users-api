@@ -1,4 +1,4 @@
-FROM golang:1.14.5-alpine
+FROM golang:1.21-alpine
 
 RUN apk update \
     && apk upgrade \
@@ -10,6 +10,6 @@ COPY . .
 
 RUN go mod download
 
-RUN go get github.com/rubenv/sql-migrate/...
+RUN go install github.com/rubenv/sql-migrate/...@latest
 
 ENTRYPOINT go build -o api && ./api

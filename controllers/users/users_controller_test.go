@@ -18,14 +18,16 @@ import (
 type mockService struct {
 	deleteFn func(int64) *utils.RestErr
 	getFn    func(int64) (*users.User, *utils.RestErr)
-	searchFn func(string) ([]users.User, *utils.RestErr)
+	searchFn func(string, int, int) ([]users.User, *utils.RestErr)
 	createFn func(*users.User) (*users.User, *utils.RestErr)
 	updateFn func(bool, *users.User) (*users.User, *utils.RestErr)
 }
 
-func (m mockService) Delete(id int64) *utils.RestErr                     { return m.deleteFn(id) }
-func (m mockService) Get(id int64) (*users.User, *utils.RestErr)         { return m.getFn(id) }
-func (m mockService) Search(s string) ([]users.User, *utils.RestErr)     { return m.searchFn(s) }
+func (m mockService) Delete(id int64) *utils.RestErr             { return m.deleteFn(id) }
+func (m mockService) Get(id int64) (*users.User, *utils.RestErr) { return m.getFn(id) }
+func (m mockService) Search(s string, l, o int) ([]users.User, *utils.RestErr) {
+	return m.searchFn(s, l, o)
+}
 func (m mockService) Create(u *users.User) (*users.User, *utils.RestErr) { return m.createFn(u) }
 func (m mockService) Update(p bool, u *users.User) (*users.User, *utils.RestErr) {
 	return m.updateFn(p, u)
@@ -220,7 +222,7 @@ func TestDelete_ServiceError(t *testing.T) {
 }
 
 func TestSearch_Success(t *testing.T) {
-	withService(t, mockService{searchFn: func(s string) ([]users.User, *utils.RestErr) {
+	withService(t, mockService{searchFn: func(s string, _, _ int) ([]users.User, *utils.RestErr) {
 		assert.Equal(t, "active", s)
 		return []users.User{*sampleUser(), *sampleUser()}, nil
 	}})
@@ -234,7 +236,7 @@ func TestSearch_Success(t *testing.T) {
 }
 
 func TestSearch_Empty(t *testing.T) {
-	withService(t, mockService{searchFn: func(string) ([]users.User, *utils.RestErr) { return []users.User{}, nil }})
+	withService(t, mockService{searchFn: func(string, int, int) ([]users.User, *utils.RestErr) { return []users.User{}, nil }})
 
 	w := do(newRouter(), http.MethodGet, "/internal/user/search?status=active", "", nil)
 
@@ -243,9 +245,67 @@ func TestSearch_Empty(t *testing.T) {
 }
 
 func TestSearch_Error(t *testing.T) {
-	withService(t, mockService{searchFn: func(string) ([]users.User, *utils.RestErr) {
+	withService(t, mockService{searchFn: func(string, int, int) ([]users.User, *utils.RestErr) {
 		return nil, utils.RestErrUtils.InternalServerErr("boom")
 	}})
 
 	assert.Equal(t, http.StatusInternalServerError, do(newRouter(), http.MethodGet, "/internal/user/search", "", nil).Code)
+}
+
+func TestCreate_NullBody_NoPanic(t *testing.T) {
+	withService(t, mockService{createFn: func(u *users.User) (*users.User, *utils.RestErr) {
+		require.NotNil(t, u)
+		return nil, utils.RestErrUtils.BadRequestErr("Empty user email.")
+	}})
+
+	w := do(newRouter(), http.MethodPost, "/user", `null`, nil)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestUpdate_BodyIDCannotOverrideURLID(t *testing.T) {
+	withService(t, mockService{updateFn: func(_ bool, u *users.User) (*users.User, *utils.RestErr) {
+		assert.EqualValues(t, 5, u.ID, "URL id must win over body id")
+		return sampleUser(), nil
+	}})
+
+	w := do(newRouter(), http.MethodPut, "/user/5", `{"id":999,"email":"j@e.c"}`, nil)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestUpdate_PatchWithoutEmail(t *testing.T) {
+	withService(t, mockService{updateFn: func(p bool, u *users.User) (*users.User, *utils.RestErr) {
+		assert.True(t, p)
+		assert.Equal(t, "Jane", u.FirstName)
+		return sampleUser(), nil
+	}})
+
+	w := do(newRouter(), http.MethodPatch, "/user/5", `{"first_name":"Jane"}`, nil)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestSearch_ParsesPagination(t *testing.T) {
+	withService(t, mockService{searchFn: func(s string, limit, offset int) ([]users.User, *utils.RestErr) {
+		assert.Equal(t, 20, limit)
+		assert.Equal(t, 40, offset)
+		return []users.User{}, nil
+	}})
+
+	w := do(newRouter(), http.MethodGet, "/internal/user/search?status=active&limit=20&offset=40", "", nil)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestSearch_IgnoresGarbagePagination(t *testing.T) {
+	withService(t, mockService{searchFn: func(s string, limit, offset int) ([]users.User, *utils.RestErr) {
+		assert.Zero(t, limit)
+		assert.Zero(t, offset)
+		return []users.User{}, nil
+	}})
+
+	w := do(newRouter(), http.MethodGet, "/internal/user/search?status=active&limit=abc&offset=xyz", "", nil)
+
+	assert.Equal(t, http.StatusOK, w.Code)
 }
