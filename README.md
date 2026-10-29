@@ -3,8 +3,8 @@
 _**!!! This is not a production ready application. Developed while studying !!!**_
 
 ### Docker
-1. Move .env.dist to .env & update the configs, if required
-2. Move dbconfig.yml.dist to dbconfig.yml & update the configs, if required
+1. Move .env.dist to .env & set your own passwords (the API connects with a dedicated `USERS_DB_USERNAME` user, not root; MySQL 8.4 is used)
+2. Move dbconfig.yml.dist to dbconfig.yml & use the same DB user/password as in .env
     * In local, MySQL host should be name of the database container
 3. `$ docker-compose up -d --build`
     * `api` may not be running as it requires the database. DB creation takes a while, so it will attempt an auto restart.
@@ -50,6 +50,7 @@ curl --location --request GET 'http://localhost:8000/user/1' \
 curl --location --request GET 'http://localhost:8000/internal/user/search?status=active' \
 --header 'X-Private: true'
 ```
+`status` is required (`active`/`suspended`/`deleted`). Results are paginated with the optional `limit` (default 100, max 1000) and `offset` query parameters.
 
 ##### Update User
 ```
@@ -77,3 +78,4 @@ curl --location --request PATCH 'http://localhost:8000/user/1' \
 ```
 curl --location --request DELETE 'http://localhost:8000/user/1'
 ```
+Delete is a soft delete: the user is marked `status: deleted` and subsequently returns 404 on get/update/delete. The row (and its email) is retained.

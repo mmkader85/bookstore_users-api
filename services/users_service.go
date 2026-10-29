@@ -2,9 +2,15 @@ package services
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/mmkader85/bookstore_users-api/domain/users"
 	"github.com/mmkader85/bookstore_users-api/utils"
+)
+
+const (
+	DefaultSearchLimit = 100
+	MaxSearchLimit     = 1000
 )
 
 var UserService userServiceInterface = &userServiceStruct{}
@@ -14,7 +20,7 @@ type userServiceStruct struct{}
 type userServiceInterface interface {
 	Delete(int64) *utils.RestErr
 	Get(int64) (*users.User, *utils.RestErr)
-	Search(string) ([]users.User, *utils.RestErr)
+	Search(status string, limit, offset int) ([]users.User, *utils.RestErr)
 	Create(*users.User) (*users.User, *utils.RestErr)
 	Update(bool, *users.User) (*users.User, *utils.RestErr)
 }
@@ -39,14 +45,33 @@ func (userServiceStruct) Get(userID int64) (*users.User, *utils.RestErr) {
 	return &user, nil
 }
 
-func (userServiceStruct) Search(status string) ([]users.User, *utils.RestErr) {
+func (userServiceStruct) Search(status string, limit, offset int) ([]users.User, *utils.RestErr) {
+	status = strings.TrimSpace(strings.ToLower(status))
+	if status != users.UserStatusActive && status != users.UserStatusSuspended && status != users.UserStatusDeleted {
+		return nil, utils.RestErrUtils.BadRequestErr(fmt.Sprintf("User status should be %s/%s/%s only.", users.UserStatusActive, users.UserStatusSuspended, users.UserStatusDeleted))
+	}
+	if limit <= 0 {
+		limit = DefaultSearchLimit
+	} else if limit > MaxSearchLimit {
+		limit = MaxSearchLimit
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
 	user := &users.User{Status: status}
 
-	return user.FindByStatus()
+	return user.FindByStatus(limit, offset)
 }
 
 func (userServiceStruct) Create(user *users.User) (*users.User, *utils.RestErr) {
+	if user == nil {
+		return nil, utils.RestErrUtils.BadRequestErr("Empty request body.")
+	}
 	if err := user.Validate(); err != nil {
+		return nil, err
+	}
+	if err := user.ValidatePassword(); err != nil {
 		return nil, err
 	}
 
@@ -66,7 +91,7 @@ func (userServiceStruct) Create(user *users.User) (*users.User, *utils.RestErr) 
 func (u userServiceStruct) Update(isPartial bool, user *users.User) (*users.User, *utils.RestErr) {
 	currentUser, getUserErr := u.Get(user.ID)
 	if getUserErr != nil {
-		return currentUser, getUserErr
+		return nil, getUserErr
 	}
 
 	if isPartial {

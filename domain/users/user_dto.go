@@ -1,9 +1,8 @@
 package users
 
 import (
-	"encoding/json"
 	"fmt"
-	"log"
+	"net/mail"
 	"strings"
 
 	"github.com/mmkader85/bookstore_users-api/utils"
@@ -13,13 +12,17 @@ const (
 	UserStatusActive    = "active"
 	UserStatusDeleted   = "deleted"
 	UserStatusSuspended = "suspended"
+
+	// bcrypt silently/explicitly rejects input beyond 72 bytes.
+	maxPasswordBytes = 72
+	maxEmailLen      = 254
 )
 
 type User struct {
 	ID        int64  `json:"id"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
-	Email     string `json:"email" binding:"required"`
+	Email     string `json:"email"`
 	CreatedAt string `json:"created_at"`
 	Status    string `json:"status"`
 	Password  string `json:"password"`
@@ -27,7 +30,7 @@ type User struct {
 
 type PublicUser struct {
 	ID        int64  `json:"id"`
-	Email     string `json:"email" binding:"required"`
+	Email     string `json:"email"`
 	CreatedAt string `json:"created_at"`
 	Status    string `json:"status"`
 }
@@ -36,7 +39,7 @@ type PrivateUser struct {
 	ID        int64  `json:"id"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
-	Email     string `json:"email" binding:"required"`
+	Email     string `json:"email"`
 	CreatedAt string `json:"created_at"`
 	Status    string `json:"status"`
 }
@@ -49,22 +52,31 @@ func (u *User) Validate() *utils.RestErr {
 	if u.Email == "" {
 		return utils.RestErrUtils.BadRequestErr("Empty user email.")
 	}
+	if parsed, err := mail.ParseAddress(u.Email); err != nil || parsed.Address != u.Email || len(u.Email) > maxEmailLen {
+		return utils.RestErrUtils.BadRequestErr("Invalid user email.")
+	}
 
 	u.Status = strings.TrimSpace(strings.ToLower(u.Status))
 	if u.Status != UserStatusActive && u.Status != UserStatusSuspended && u.Status != UserStatusDeleted {
 		return utils.RestErrUtils.BadRequestErr(fmt.Sprintf("User status should be %s/%s/%s only.", UserStatusActive, UserStatusSuspended, UserStatusDeleted))
 	}
 
-	u.Password = strings.TrimSpace(strings.ToLower(u.Password))
-	if u.Password == "" {
+	return nil
+}
+
+// ValidatePassword checks a plain-text password. The password is deliberately
+// not trimmed or case-folded, as that would silently weaken what the user chose.
+func (u *User) ValidatePassword() *utils.RestErr {
+	if strings.TrimSpace(u.Password) == "" {
 		return utils.RestErrUtils.BadRequestErr("Empty user password.")
+	}
+	if len(u.Password) > maxPasswordBytes {
+		return utils.RestErrUtils.BadRequestErr(fmt.Sprintf("User password should not exceed %d bytes.", maxPasswordBytes))
 	}
 
 	return nil
 }
 
-// Marshall can be done manually or thru json.Marshal().
-// This method demonstrates both.
 func (u User) Marshal(isPublic bool) interface{} {
 	if isPublic {
 		return &PublicUser{
@@ -75,15 +87,12 @@ func (u User) Marshal(isPublic bool) interface{} {
 		}
 	}
 
-	user, err := json.Marshal(u)
-	if err != nil {
-		log.Fatal("Unable to marshall user.")
+	return PrivateUser{
+		ID:        u.ID,
+		FirstName: u.FirstName,
+		LastName:  u.LastName,
+		Email:     u.Email,
+		CreatedAt: u.CreatedAt,
+		Status:    u.Status,
 	}
-
-	var privateUser PrivateUser
-	if err = json.Unmarshal(user, &privateUser); err != nil {
-		log.Fatal("Unable to unmarshall user.")
-	}
-
-	return privateUser
 }
