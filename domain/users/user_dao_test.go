@@ -77,7 +77,7 @@ func TestUserGet_Success(t *testing.T) {
 	mock := setupMockDB(t)
 	rows := sqlmock.NewRows([]string{"id", "first_name", "last_name", "email", "created_at", "status", "password"}).
 		AddRow(1, "John", "Doe", "john@example.com", "2020-01-01 00:00:00", "active", "hash")
-	mock.ExpectQuery("SELECT id, first_name").WithArgs(int64(1)).WillReturnRows(rows)
+	mock.ExpectQuery("SELECT id, first_name").WithArgs(int64(1), "deleted").WillReturnRows(rows)
 
 	u := &User{ID: 1}
 	err := u.Get()
@@ -91,7 +91,7 @@ func TestUserGet_Success(t *testing.T) {
 
 func TestUserGet_NotFound(t *testing.T) {
 	mock := setupMockDB(t)
-	mock.ExpectQuery("SELECT id, first_name").WithArgs(int64(9)).WillReturnError(sql.ErrNoRows)
+	mock.ExpectQuery("SELECT id, first_name").WithArgs(int64(9), "deleted").WillReturnError(sql.ErrNoRows)
 
 	err := (&User{ID: 9}).Get()
 
@@ -144,7 +144,7 @@ func TestUserUpdate_ExecError(t *testing.T) {
 
 func TestUserDelete_Success(t *testing.T) {
 	mock := setupMockDB(t)
-	mock.ExpectExec("DELETE FROM users").WithArgs(int64(5)).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("UPDATE users SET status").WithArgs("deleted", int64(5), "deleted").WillReturnResult(sqlmock.NewResult(0, 1))
 
 	assert.Nil(t, (&User{ID: 5}).Delete())
 	assert.NoError(t, mock.ExpectationsWereMet())
@@ -152,7 +152,7 @@ func TestUserDelete_Success(t *testing.T) {
 
 func TestUserDelete_NotFound(t *testing.T) {
 	mock := setupMockDB(t)
-	mock.ExpectExec("DELETE FROM users").WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec("UPDATE users SET status").WillReturnResult(sqlmock.NewResult(0, 0))
 
 	err := (&User{ID: 5}).Delete()
 
@@ -162,7 +162,7 @@ func TestUserDelete_NotFound(t *testing.T) {
 
 func TestUserDelete_ExecError(t *testing.T) {
 	mock := setupMockDB(t)
-	mock.ExpectExec("DELETE FROM users").WillReturnError(errors.New("boom"))
+	mock.ExpectExec("UPDATE users SET status").WillReturnError(errors.New("boom"))
 
 	err := (&User{ID: 5}).Delete()
 
@@ -172,7 +172,7 @@ func TestUserDelete_ExecError(t *testing.T) {
 
 func TestUserDelete_RowsAffectedError(t *testing.T) {
 	mock := setupMockDB(t)
-	mock.ExpectExec("DELETE FROM users").WillReturnResult(sqlmock.NewErrorResult(errors.New("boom")))
+	mock.ExpectExec("UPDATE users SET status").WillReturnResult(sqlmock.NewErrorResult(errors.New("boom")))
 
 	err := (&User{ID: 5}).Delete()
 

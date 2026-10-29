@@ -15,9 +15,9 @@ const (
 	emailUniqueKey        = "unq_email"
 	mysqlDuplicateEntry   = 1062
 	insertUsersQuery      = "INSERT INTO users(first_name, last_name, email, created_at, status, password) VALUES(?, ?, ?, ?, ?, ?);"
-	selectUserQuery       = "SELECT id, first_name, last_name, email, created_at, status, password FROM users WHERE id = ?;"
+	selectUserQuery       = "SELECT id, first_name, last_name, email, created_at, status, password FROM users WHERE id = ? AND status <> ?;"
 	updateUserQuery       = "UPDATE users SET first_name = ?, last_name = ?, email = ?, status = ? WHERE id = ?;"
-	deleteUserQuery       = "DELETE FROM users WHERE id = ?;"
+	deleteUserQuery       = "UPDATE users SET status = ? WHERE id = ? AND status <> ?;"
 	findUserByStatusQuery = "SELECT id, first_name, last_name, email, created_at, status FROM users WHERE status = ? ORDER BY id LIMIT ? OFFSET ?;"
 )
 
@@ -58,7 +58,7 @@ func (u *User) Save() *utils.RestErr {
 
 func (u *User) Get() *utils.RestErr {
 	clientErrMsg := "Unable to get user."
-	err := users_db.Client.QueryRow(selectUserQuery, u.ID).Scan(&u.ID, &u.FirstName, &u.LastName, &u.Email, &u.CreatedAt, &u.Status, &u.Password)
+	err := users_db.Client.QueryRow(selectUserQuery, u.ID, UserStatusDeleted).Scan(&u.ID, &u.FirstName, &u.LastName, &u.Email, &u.CreatedAt, &u.Status, &u.Password)
 	if err == sql.ErrNoRows {
 		logger.Info(fmt.Sprintf("UserID %d doesn't exist", u.ID))
 		return utils.RestErrUtils.NotFoundErr(fmt.Sprintf("UserID %d doesn't exist", u.ID))
@@ -85,9 +85,10 @@ func (u *User) Update() *utils.RestErr {
 	return nil
 }
 
+// Delete soft-deletes the user by marking it as deleted. Already deleted users are treated as not found.
 func (u *User) Delete() *utils.RestErr {
 	clientErrMsg := "Unable to delete user."
-	res, deleteErr := users_db.Client.Exec(deleteUserQuery, u.ID)
+	res, deleteErr := users_db.Client.Exec(deleteUserQuery, UserStatusDeleted, u.ID, UserStatusDeleted)
 	if deleteErr != nil {
 		logger.Error("Error executing query for 'Delete'.", deleteErr)
 		return utils.RestErrUtils.InternalServerErr(clientErrMsg)

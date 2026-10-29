@@ -30,7 +30,7 @@ func setupMockDB(t *testing.T) sqlmock.Sqlmock {
 
 func TestGet_Success(t *testing.T) {
 	mock := setupMockDB(t)
-	mock.ExpectQuery("SELECT id, first_name").WithArgs(int64(1)).
+	mock.ExpectQuery("SELECT id, first_name").WithArgs(int64(1), "deleted").
 		WillReturnRows(sqlmock.NewRows(userCols).AddRow(1, "John", "Doe", "j@e.c", "ts", "active", "hash"))
 
 	user, err := UserService.Get(1)
@@ -108,7 +108,7 @@ func TestCreate_SaveError(t *testing.T) {
 }
 
 func expectGet(mock sqlmock.Sqlmock, id int64) {
-	mock.ExpectQuery("SELECT id, first_name").WithArgs(id).
+	mock.ExpectQuery("SELECT id, first_name").WithArgs(id, "deleted").
 		WillReturnRows(sqlmock.NewRows(userCols).AddRow(id, "John", "Doe", "j@e.c", "ts", "active", "hash"))
 }
 
@@ -192,14 +192,14 @@ func TestUpdate_DBError(t *testing.T) {
 
 func TestDelete_Success(t *testing.T) {
 	mock := setupMockDB(t)
-	mock.ExpectExec("DELETE FROM users").WithArgs(int64(4)).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("UPDATE users SET status").WithArgs("deleted", int64(4), "deleted").WillReturnResult(sqlmock.NewResult(0, 1))
 
 	assert.Nil(t, UserService.Delete(4))
 }
 
 func TestDelete_NotFound(t *testing.T) {
 	mock := setupMockDB(t)
-	mock.ExpectExec("DELETE FROM users").WillReturnResult(sqlmock.NewResult(0, 0))
+	mock.ExpectExec("UPDATE users SET status").WillReturnResult(sqlmock.NewResult(0, 0))
 
 	err := UserService.Delete(4)
 
@@ -260,7 +260,7 @@ func TestCreate_PasswordTooLongForBcrypt(t *testing.T) {
 
 func TestUpdate_DoesNotRequirePasswordOrRehash(t *testing.T) {
 	mock := setupMockDB(t)
-	mock.ExpectQuery("SELECT id, first_name").WithArgs(int64(1)).
+	mock.ExpectQuery("SELECT id, first_name").WithArgs(int64(1), "deleted").
 		WillReturnRows(sqlmock.NewRows(userCols).AddRow(1, "John", "Doe", "j@e.c", "ts", "active", ""))
 	mock.ExpectExec("UPDATE users SET").WillReturnResult(sqlmock.NewResult(0, 1))
 
